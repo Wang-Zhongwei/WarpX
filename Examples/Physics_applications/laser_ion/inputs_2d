@@ -53,7 +53,7 @@ warpx.use_filter = 1          # bilinear current/charge filter
 #   the numprocs product must be equal to the number of MPI ranks and splits
 #   the domain on the coarsest level equally into grids;
 #   slicing in the 2nd dimension is preferred for ideal performance
-warpx.numprocs = 1 2   # 2 MPI ranks
+# warpx.numprocs = 1 2   # 2 MPI ranks
 #warpx.numprocs = 1 4  # 4 MPI ranks
 
 # detail tuning instead of warpx.numprocs:
@@ -63,7 +63,7 @@ warpx.numprocs = 1 2   # 2 MPI ranks
 #   few large grids on each device (you can go as low as 1 large grid / device
 #   if you do not need load balancing).
 #   Slicing in the 2nd dimension is preferred for ideal performance
-#amr.blocking_factor = 64
+amr.blocking_factor = 128
 #amr.max_grid_size_x = 2688
 #amr.max_grid_size_y = 128  # this is confusingly named and means z in 2D
 
@@ -211,7 +211,7 @@ diag1.coarsening_ratio = 4 4
 diag1.electrons.plot_filter_function(t,x,y,z,ux,uy,uz) = (uz>=0) * (x<1.0e-6) * (x>-1.0e-6)
 diag1.hydrogen.plot_filter_function(t,x,y,z,ux,uy,uz) = (uz>=0) * (x<1.0e-6) * (x>-1.0e-6)
 diag1.format = openpmd
-diag1.openpmd_backend = h5
+diag1.openpmd_backend = bp
 
 openPMDfw.intervals = 100
 openPMDfw.diag_type = Full
@@ -219,7 +219,7 @@ openPMDfw.fields_to_plot = Ex Ey Ez Bx By Bz jx jy jz rho rho_electrons rho_hydr
 # reduce resolution of output fields
 openPMDfw.coarsening_ratio = 4 4
 openPMDfw.format = openpmd
-openPMDfw.openpmd_backend = h5
+openPMDfw.openpmd_backend = bp
 # demonstration of a spatial and momentum filter
 openPMDfw.electrons.plot_filter_function(t,x,y,z,ux,uy,uz) = (uz>=0) * (x<1.0e-6) * (x>-1.0e-6)
 openPMDfw.hydrogen.plot_filter_function(t,x,y,z,ux,uy,uz) = (uz>=0) * (x<1.0e-6) * (x>-1.0e-6)
@@ -230,7 +230,7 @@ openPMDbw.fields_to_plot = rho_hydrogen
 # reduce resolution of output fields
 openPMDbw.coarsening_ratio = 4 4
 openPMDbw.format = openpmd
-openPMDbw.openpmd_backend = h5
+openPMDbw.openpmd_backend = bp
 # demonstration of a momentum filter
 openPMDbw.electrons.plot_filter_function(t,x,y,z,ux,uy,uz) = (uz<0)
 openPMDbw.hydrogen.plot_filter_function(t,x,y,z,ux,uy,uz) = (uz<0)
