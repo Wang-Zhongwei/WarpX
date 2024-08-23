@@ -1,0 +1,191 @@
+# FieldProbe_ScatLine
+FieldProbe_ScatLine.integrate = 1
+FieldProbe_ScatLine.intervals = 100
+FieldProbe_ScatLine.probe_geometry = Line
+FieldProbe_ScatLine.resolution = 201
+FieldProbe_ScatLine.type = FieldProbe
+FieldProbe_ScatLine.x1_probe = 2.5e-06
+FieldProbe_ScatLine.x_probe = -2.5e-06
+FieldProbe_ScatLine.z1_probe = 1.5e-05
+FieldProbe_ScatLine.z_probe = 1.5e-05
+
+# FieldProbe_ScatPoint
+FieldProbe_ScatPoint.integrate = 0
+FieldProbe_ScatPoint.intervals = 1
+FieldProbe_ScatPoint.probe_geometry = Point
+FieldProbe_ScatPoint.type = FieldProbe
+FieldProbe_ScatPoint.x_probe = 0.0
+FieldProbe_ScatPoint.z_probe = 1.5e-05
+
+# FieldProbe_Z
+FieldProbe_Z.integrate = 0
+FieldProbe_Z.intervals = 100
+FieldProbe_Z.probe_geometry = Line
+FieldProbe_Z.resolution = 3712
+FieldProbe_Z.type = FieldProbe
+FieldProbe_Z.x1_probe = 0.0
+FieldProbe_Z.x_probe = 0.0
+FieldProbe_Z.z1_probe = 2.5e-05
+FieldProbe_Z.z_probe = -5e-06
+
+# LBC
+LBC.intervals = 100
+LBC.type = LoadBalanceCosts
+
+# Python_LaserIonAcc2d_plt
+Python_LaserIonAcc2d_plt.coarsening_ratio = 4 4
+Python_LaserIonAcc2d_plt.diag_type = Full
+Python_LaserIonAcc2d_plt.electrons.plot_filter_function(t,x,y,z,ux,uy,uz) = "(uz>=0) * (x<1.0e-6) * (x>-1.0e-6)"
+Python_LaserIonAcc2d_plt.fields_to_plot = Bx By Bz Ex Ey Ez jx jy jz rho rho_electrons rho_hydrogen
+Python_LaserIonAcc2d_plt.file_prefix = ./diags/Python_LaserIonAcc2d_plt
+Python_LaserIonAcc2d_plt.format = openpmd
+Python_LaserIonAcc2d_plt.hydrogen.plot_filter_function(t,x,y,z,ux,uy,uz) = "(uz>=0) * (x<1.0e-6) * (x>-1.0e-6)"
+Python_LaserIonAcc2d_plt.intervals = 100
+Python_LaserIonAcc2d_plt.openpmd_backend = h5
+Python_LaserIonAcc2d_plt.species = electrons hydrogen
+Python_LaserIonAcc2d_plt.write_species = 1
+
+# algo
+algo.load_balance_costs_update = heuristic
+algo.load_balance_intervals = 100
+algo.maxwell_solver = Yee
+algo.particle_shape = 3
+
+# amr
+amr.blocking_factor = 32
+amr.max_grid_size = 64
+amr.max_level = 0
+amr.n_cell = 384 512
+
+# boundary
+boundary.field_hi = pml pml
+boundary.field_lo = pml pml
+boundary.particle_hi = absorbing absorbing
+boundary.particle_lo = absorbing absorbing
+
+# diagnostics
+diagnostics.diags_names = Python_LaserIonAcc2d_plt openPMDfw openPMDbw
+
+# electrons
+electrons.charge = -q_e
+electrons.density_function(x,y,z) = "5.226e+28*((abs(z)<=2.5e-06) + (abs(z)<2.5e-06+2e-06) * (abs(z)>2.5e-06) * exp(-(abs(z)-2.5e-06)/5e-08))"
+electrons.initialize_self_fields = 0
+electrons.injection_style = nuniformpercell
+electrons.mass = m_e
+electrons.momentum_distribution_type = gaussian
+electrons.num_particles_per_cell_each_dim = 2 2
+electrons.profile = parse_density_function
+electrons.ux_m = 0.0
+electrons.ux_th = 0.01
+electrons.uy_m = 0.0
+electrons.uy_th = 0.0
+electrons.uz_m = 0.0
+electrons.uz_th = 0.01
+electrons.zmax = 4.5500000000000005e-06
+electrons.zmin = -4.5500000000000005e-06
+
+# geometry
+geometry.dims = 2
+geometry.prob_hi = 7.5e-06 2.5e-05
+geometry.prob_lo = -7.5e-06 -5e-06
+
+# histuH
+histuH.bin_max = 0.474
+histuH.bin_min = 0.0
+histuH.bin_number = 1000
+histuH.filter_function(t,x,y,z,ux,uy,uz) = "u2=ux*ux+uy*uy+uz*uz; if(u2>0, abs(acos(uz / sqrt(u2))) <= 0.017453, 0)"
+histuH.histogram_function(t,x,y,z,ux,uy,uz) = "u2=ux*ux+uy*uy+uz*uz; if(u2>0, sqrt(u2), 0.0)"
+histuH.intervals = 100
+histuH.species = hydrogen
+histuH.type = ParticleHistogram
+
+# histue
+histue.bin_max = 197.0
+histue.bin_min = 0.0
+histue.bin_number = 1000
+histue.filter_function(t,x,y,z,ux,uy,uz) = "u2=ux*ux+uy*uy+uz*uz; if(u2>0, abs(acos(uz / sqrt(u2))) <= 0.017453, 0)"
+histue.histogram_function(t,x,y,z,ux,uy,uz) = "u2=ux*ux+uy*uy+uz*uz; if(u2>0, sqrt(u2), 0.0)"
+histue.intervals = 100
+histue.species = electrons
+histue.type = ParticleHistogram
+
+# histuzAll
+histuzAll.bin_max = 0.474
+histuzAll.bin_min = -0.474
+histuzAll.bin_number = 1000
+histuzAll.histogram_function(t,x,y,z,ux,uy,uz) = uz
+histuzAll.intervals = 100
+histuzAll.species = hydrogen
+histuzAll.type = ParticleHistogram
+
+# hydrogen
+hydrogen.addRealAttributes = orig_x orig_z
+hydrogen.attribute.orig_x(x,y,z,ux,uy,uz,t) = x
+hydrogen.attribute.orig_z(x,y,z,ux,uy,uz,t) = z
+hydrogen.charge = q_e
+hydrogen.density_function(x,y,z) = "5.226e+28*((abs(z)<=2.5e-06) + (abs(z)<2.5e-06+2e-06) * (abs(z)>2.5e-06) * exp(-(abs(z)-2.5e-06)/5e-08))"
+hydrogen.initialize_self_fields = 0
+hydrogen.injection_style = nuniformpercell
+hydrogen.mass = m_p
+hydrogen.momentum_distribution_type = constant
+hydrogen.num_particles_per_cell_each_dim = 2 2
+hydrogen.profile = parse_density_function
+hydrogen.ux = 0.0
+hydrogen.uy = 0.0
+hydrogen.uz = 0.0
+hydrogen.zmax = 4.5500000000000005e-06
+hydrogen.zmin = -4.5500000000000005e-06
+
+# laser1
+laser1.direction = 0 0 1
+laser1.do_continuous_injection = 0
+laser1.e_max = 64220000000000.0
+laser1.polarization = 1 0 0
+laser1.position = 0.0 0.0 -4e-06
+laser1.profile = Gaussian
+laser1.profile_duration = 3e-14
+laser1.profile_focal_distance = 4e-06
+laser1.profile_t_peak = 5e-14
+laser1.profile_waist = 4e-06
+laser1.wavelength = 8e-07
+
+# lasers
+lasers.names = laser1
+
+# openPMDbw
+openPMDbw.diag_type = Full
+openPMDbw.electrons.plot_filter_function(t,x,y,z,ux,uy,uz) = (uz<0)
+openPMDbw.fields_to_plot = none
+openPMDbw.file_prefix = ./diags/openPMDbw
+openPMDbw.format = openpmd
+openPMDbw.hydrogen.plot_filter_function(t,x,y,z,ux,uy,uz) = (uz<0)
+openPMDbw.intervals = 100
+openPMDbw.openpmd_backend = h5
+openPMDbw.species = electrons hydrogen
+openPMDbw.write_species = 1
+
+# openPMDfw
+openPMDfw.diag_type = Full
+openPMDfw.electrons.plot_filter_function(t,x,y,z,ux,uy,uz) = "(uz>=0) * (x<1.0e-6) * (x>-1.0e-6)"
+openPMDfw.fields_to_plot = none
+openPMDfw.file_prefix = ./diags/openPMDfw
+openPMDfw.format = openpmd
+openPMDfw.hydrogen.plot_filter_function(t,x,y,z,ux,uy,uz) = "(uz>=0) * (x<1.0e-6) * (x>-1.0e-6)"
+openPMDfw.intervals = 100
+openPMDfw.openpmd_backend = h5
+openPMDfw.species = electrons hydrogen
+openPMDfw.write_species = 1
+
+# particles
+particles.species_names = electrons hydrogen
+
+# stop_time
+stop_time = 2e-13
+
+# warpx
+warpx.cfl = 0.999
+warpx.do_dive_cleaning = 0
+warpx.numprocs = 1 2
+warpx.reduced_diags_names = histuH histue histuzAll FieldProbe_Z FieldProbe_ScatPoint FieldProbe_ScatLine LBC
+warpx.use_filter = 1
+warpx.verbose = 1
