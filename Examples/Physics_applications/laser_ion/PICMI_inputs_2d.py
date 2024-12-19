@@ -185,7 +185,7 @@ particle_bw_diag = picmi.ParticleDiagnostic(
 # histograms with 2.0 degree acceptance angle in fw direction
 # 2 deg * pi / 180 : 0.03490658503 rad
 # half-angle +/-   : 0.017453292515 rad
-histuH_rdiag = picmi.ReducedDiagnostic(
+histuH_rdiag = picmi.ReducedDiagnostic( 
     diag_type="ParticleHistogram",
     name="histuH",
     period=100,

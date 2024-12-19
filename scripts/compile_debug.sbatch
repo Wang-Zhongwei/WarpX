@@ -7,8 +7,8 @@
 #SBATCH --error=./logs/%x_%j.err
 
 cd $HOME/src/warpx
-rm -rf build
+rm -rf build_debug
 source $HOME/pitzer_cpu_warpx.profile
 
-cmake -S . -B build -DWarpX_FFT=ON -DWarpX_QED_TABLE_GEN=ON -DWarpX_DIMS="1;2;RZ;3"
-cmake --build build -j 48
+cmake -S . -B build_debug -DWarpX_DIMS="2" -DCMAKE_BUILD_TYPE=Debug -DAMReX_ASSERTIONS=ON -DAMReX_BOUND_CHECK=ON
+cmake --build build_debug -j 48

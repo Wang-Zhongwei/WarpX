@@ -1,0 +1,89 @@
+# algo
+algo.maxwell_solver = CKC
+algo.particle_shape = 1
+
+# amr
+amr.blocking_factor = 16
+amr.max_grid_size = 64
+amr.max_level = 0
+amr.n_cell = 16 800
+
+# boundary
+boundary.field_hi = periodic pml
+boundary.field_lo = periodic pml
+boundary.particle_hi = periodic open
+boundary.particle_lo = periodic open
+
+# diag1
+diag1.diag_type = Full
+diag1.electrons.variables = orig_z ux uy uz w x z
+diag1.fields_to_plot = Bx By Bz Ex Ey Ez jx jy jz
+diag1.file_prefix = ./Python_ionization_plt
+diag1.format = plotfile
+diag1.intervals = 10000
+diag1.ions.variables = orig_z ux uy uz w x z
+diag1.species = electrons ions
+diag1.write_species = 1
+
+# diagnostics
+diagnostics.diags_names = diag1
+
+# electrons
+electrons.addRealAttributes = orig_z
+electrons.attribute.orig_z(x,y,z,ux,uy,uz,t) = z
+electrons.charge = -q_e
+electrons.initialize_self_fields = 0
+electrons.mass = m_e
+
+# geometry
+geometry.dims = 2
+geometry.prob_hi = 5e-06 2e-05
+geometry.prob_lo = -5e-06 0.0
+
+# ions
+ions.addRealAttributes = orig_z
+ions.attribute.orig_z(x,y,z,ux,uy,uz,t) = z
+ions.charge = q_e
+ions.density = 1
+ions.do_continuous_injection = 1
+ions.do_field_ionization = 1
+ions.initialize_self_fields = 0
+ions.injection_style = nuniformpercell
+ions.ionization_initial_level = 2
+ions.ionization_product_species = electrons
+ions.mass = 2.325684668778157e-26
+ions.momentum_distribution_type = constant
+ions.num_particles_per_cell_each_dim = 2 1 1
+ions.physical_element = N
+ions.profile = constant
+ions.ux = 0.0
+ions.uy = 0.0
+ions.uz = 0.0
+ions.zmax = 1.5e-05
+ions.zmin = 5e-06
+
+# laser1
+laser1.direction = 0 0 1
+laser1.do_continuous_injection = 0
+laser1.e_max = 7224077462850.214
+laser1.polarization = 1 0 0
+laser1.position = 0.0 0.0 3e-06
+laser1.profile = Gaussian
+laser1.profile_duration = 2.6685e-14
+laser1.profile_focal_distance = 0.0
+laser1.profile_t_peak = 6e-14
+laser1.profile_waist = 10000000000.0
+laser1.wavelength = 8e-07
+
+# lasers
+lasers.names = laser1
+
+# max_step
+max_step = 1600
+
+# particles
+particles.species_names = electrons ions
+
+# warpx
+warpx.cfl = 0.999
+warpx.use_filter = 0
