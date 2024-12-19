@@ -5,10 +5,9 @@ This script tests the last coordinate after adding an electron.
 The sphere is centered on O and has a radius of 0.2 (EB)
 The electron is initially at: (0,0,-0.25) and moves with a velocity:
 (0.5e10,0,1.0e10) with a time step of 1e-11.
-An input file PICMI_inputs_rz.py is used.
+An input file inputs_test_rz_particle_boundary_interaction_picmi.py is used.
 """
 
-import os
 import sys
 
 import numpy as np
@@ -16,15 +15,10 @@ import yt
 from openpmd_viewer import OpenPMDTimeSeries
 
 yt.funcs.mylog.setLevel(0)
-sys.path.insert(1, "../../../../warpx/Regression/Checksum/")
-import checksumAPI
 
 # Open plotfile specified in command line
 filename = sys.argv[1]
-test_name = os.path.split(os.getcwd())[1]
-checksumAPI.evaluate_checksum(test_name, filename, output_format="openpmd")
-
-ts = OpenPMDTimeSeries("./particle_boundary_interaction_plt")
+ts = OpenPMDTimeSeries(filename)
 
 it = ts.iterations
 x, y, z = ts.get_particle(["x", "y", "z"], species="electrons", iteration=it[-1])

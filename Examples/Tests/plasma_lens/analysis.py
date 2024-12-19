@@ -15,7 +15,6 @@ The final positions are compared to the analytic solutions.
 The motion is slow enough that relativistic effects are ignored.
 """
 
-import os
 import sys
 
 import numpy as np
@@ -23,8 +22,6 @@ import yt
 from scipy.constants import c, e, m_e
 
 yt.funcs.mylog.setLevel(0)
-sys.path.insert(1, "../../../../warpx/Regression/Checksum/")
-import checksumAPI
 
 filename = sys.argv[1]
 ds = yt.load(filename)
@@ -193,11 +190,3 @@ assert abs(np.abs((ux - ux_sim) / ux)) < velocity_tolerance, Exception(
 assert abs(np.abs((uy - uy_sim) / uy)) < velocity_tolerance, Exception(
     "error in y particle velocity"
 )
-
-test_name = os.path.split(os.getcwd())[1]
-# The PICMI and native input versions of `inputs_3d` run the same test, so
-# their results are compared to the same benchmark file.
-if test_name == "Python_plasma_lens":
-    test_name = "Plasma_lens"
-
-checksumAPI.evaluate_checksum(test_name, filename)
