@@ -14,7 +14,7 @@ module purge
 module load cmake/3.25.2
 module load intel/2021.10.0
 module load cuda/12.4.1
-module load mvapich-cuda/3.0
+module load openmpi-cuda/5.0.2
 
 # optional: for python binding support
 module load miniconda3/24.1.2-py310

@@ -75,10 +75,12 @@ else
   git clone -b v2024.05.31 https://github.com/icl-utk-edu/lapackpp.git ${SRC_DIR}/lapackpp
 fi
 rm -rf ${build_dir}/lapackpp-cardinal-cpu-build
-CXX=$(which CC) CXXFLAGS="-DLAPACK_FORTRAN_ADD_" cmake -S ${SRC_DIR}/lapackpp \
+#CXX=$(which CC) 
+CXXFLAGS="-DLAPACK_FORTRAN_ADD_" cmake -S ${SRC_DIR}/lapackpp \
   -B ${build_dir}/lapackpp-cardinal-cpu-build \
   -DCMAKE_CXX_STANDARD=17 \
   -Dbuild_tests=OFF \
+  -Dgpu_backend=none \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON \
   -DCMAKE_INSTALL_PREFIX=${SW_DIR}/lapackpp-2024.05.31
 cmake --build ${build_dir}/lapackpp-cardinal-cpu-build --target install --parallel 16

@@ -12,8 +12,8 @@ export SW_DIR="${HOME}/sw/osc/cardinal/cpu"
 
 module purge
 module load cmake/3.25.2
-module load intel/2021.10.0
-module load mvapich/3.0
+module load gcc/12.3.0 
+module load openmpi/5.0.2
 
 # optional: for python binding support
 module load miniconda3/24.1.2-py310

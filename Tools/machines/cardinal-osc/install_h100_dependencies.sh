@@ -13,9 +13,9 @@ set -eu -o pipefail
 
 # Check: ######################################################################
 #
-#   Was cardinal_v100_warpx.profile sourced and configured correctly?
+#   Was cardinal_h100_warpx.profile sourced and configured correctly?
 if [ -z ${proj-} ]; then
-  echo "WARNING: The 'proj' variable is not yet set in your cardinal_v100_warpx.profile file! Please edit its line 2 to continue!"
+  echo "WARNING: The 'proj' variable is not yet set in your cardinal_h100_warpx.profile file! Please edit its line 2 to continue!"
   exit 1
 fi
 
@@ -67,15 +67,15 @@ if [ -d ${SRC_DIR}/blaspp ]; then
 else
   git clone -b v2024.05.31 https://github.com/icl-utk-edu/blaspp.git ${SRC_DIR}/blaspp
 fi
-rm -rf ${build_dir}/blaspp-cardinal-v100-build
+rm -rf ${build_dir}/blaspp-cardinal-h100-build
 CXX=$(which CC) cmake -S ${SRC_DIR}/blaspp \
-  -B ${build_dir}/blaspp-cardinal-v100-build \
+  -B ${build_dir}/blaspp-cardinal-h100-build \
   -Duse_openmp=ON \
   -Dgpu_backend=cuda \
   -DCMAKE_CXX_STANDARD=17 \
   -DCMAKE_INSTALL_PREFIX=${SW_DIR}/blaspp-2024.05.31
-cmake --build ${build_dir}/blaspp-cardinal-v100-build --target install --parallel 16
-rm -rf ${build_dir}/blaspp-cardinal-v100-build
+cmake --build ${build_dir}/blaspp-cardinal-h100-build --target install --parallel 16
+rm -rf ${build_dir}/blaspp-cardinal-h100-build
 
 # LAPACK++ (for PSATD+RZ)
 if [ -d ${SRC_DIR}/lapackpp ]; then
@@ -86,15 +86,15 @@ if [ -d ${SRC_DIR}/lapackpp ]; then
 else
   git clone -b v2024.05.31 https://github.com/icl-utk-edu/lapackpp.git ${SRC_DIR}/lapackpp
 fi
-rm -rf ${build_dir}/lapackpp-cardinal-v100-build
+rm -rf ${build_dir}/lapackpp-cardinal-h100-build
 CXX=$(which CC) CXXFLAGS="-DLAPACK_FORTRAN_ADD_" cmake -S ${SRC_DIR}/lapackpp \
-  -B ${build_dir}/lapackpp-cardinal-v100-build \
+  -B ${build_dir}/lapackpp-cardinal-h100-build \
   -DCMAKE_CXX_STANDARD=17 \
   -Dbuild_tests=OFF \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON \
   -DCMAKE_INSTALL_PREFIX=${SW_DIR}/lapackpp-2024.05.31
-cmake --build ${build_dir}/lapackpp-cardinal-v100-build --target install --parallel 16
-rm -rf ${build_dir}/lapackpp-cardinal-v100-build
+cmake --build ${build_dir}/lapackpp-cardinal-h100-build --target install --parallel 16
+rm -rf ${build_dir}/lapackpp-cardinal-h100-build
 
 # c-blosc (I/O compression, for openPMD)
 if [ -d ${SRC_DIR}/c-blosc ]; then

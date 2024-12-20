@@ -10,5 +10,5 @@ cd $HOME/src/warpx
 rm -rf build_cardinal_cpu
 source $HOME/cardinal_cpu_warpx.profile
 
-cmake -S . -B build_cardinal_cpu -DWarpX_DIMS="1;2;3"
+cmake -S . -B build_cardinal_cpu -DWarpX_DIMS="1;2;3;RZ" -DWarpX_FFT=ON -DWarpX_QED_TABLE_GEN=ON -DWarpX_QED_TOOLS=ON
 cmake --build build_cardinal_cpu -j 48

@@ -9,8 +9,7 @@
 
 cd $HOME/src/warpx
 rm -rf build_h100
-# source $HOME/cardinal_h100_warpx.profile
-source /users/PAS2137/wang15032/src/warpx/Tools/machines/cardinal-osc/cardinal_h100_warpx.profile
+source $HOME/cardinal_h100_warpx.profile
 
 cmake -S . -B build_h100 -DWarpX_COMPUTE=CUDA -DWarpX_FFT=ON -DWarpX_QED_TABLE_GEN=ON -DWarpX_DIMS="1;2;RZ;3" -DWarpX_QED_TOOLS=ON
 cmake --build build_h100 -j 48

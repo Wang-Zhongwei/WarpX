@@ -64,7 +64,7 @@ warpx.use_filter = 1          # bilinear current/charge filter
 #   if you do not need load balancing).
 #   Slicing in the 2nd dimension is preferred for ideal performance
 amr.blocking_factor = 32
-amr.max_grid_size_x = 2688
+amr.max_grid_size_x = 1344
 amr.max_grid_size_y = 3712
  # this is confusingly named and means z in 2D
 

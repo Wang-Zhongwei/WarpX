@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --time=0:20:00
-#SBATCH --nodes=1 --ntasks-per-node=1
+#SBATCH --nodes=1 --ntasks-per-node=2
 #SBATCH --cpus-per-task=2
 #SBATCH --gpus-per-task=1
 #SBATCH --job-name=laser_ion_h100
