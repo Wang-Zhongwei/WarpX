@@ -75,7 +75,7 @@ else
   git clone -b v2024.05.31 https://github.com/icl-utk-edu/lapackpp.git ${SRC_DIR}/lapackpp
 fi
 rm -rf ${build_dir}/lapackpp-cardinal-cpu-build
-#CXX=$(which CC) 
+# CXX=$(which CC) 
 CXXFLAGS="-DLAPACK_FORTRAN_ADD_" cmake -S ${SRC_DIR}/lapackpp \
   -B ${build_dir}/lapackpp-cardinal-cpu-build \
   -DCMAKE_CXX_STANDARD=17 \
