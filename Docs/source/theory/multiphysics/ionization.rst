@@ -69,5 +69,55 @@ Testing
 
 * `Testing the field ionization module <../../../../en/latest/usage/examples/field_ionization/README.html>`_.
 
+Multiphoton Ionization (MPI)
+-----------------------------
+
+WarpX also supports multiphoton ionization, where atoms/ions absorb multiple photons
+simultaneously to reach ionization. The ionization rate is:
+
+.. math::
+
+   w = (C \cdot E)^{2n}
+
+where:
+
+* :math:`E` is the electric field amplitude in the particle rest frame (same Lorentz transformation as ADK)
+* :math:`n = \lceil I_p / (\hbar\omega) \rceil` is the minimum number of photons required
+* :math:`I_p` is the ionization potential
+* :math:`\omega` is the laser angular frequency
+* :math:`C` is a species-dependent prefactor (default: 1e-14 in SI units)
+
+The probability of ionization over a timestep is:
+
+.. math::
+
+    P = 1 - \exp(-w \Delta\tau / \gamma)
+
+where :math:`\Delta\tau` is the simulation timestep and :math:`\gamma` is the Lorentz factor.
+
+Implementation Details
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. note::
+
+    The multiphoton ionization implementation makes the following assumptions
+
+    * Energy for ionization processes is not removed from the electromagnetic fields
+    * Only one single-level ionization process can occur per macroparticle and time step
+    * Ionization happens at the beginning of the PIC loop before the field solve
+    * The laser wavelength is specified as a constant parameter (not time-varying)
+
+To enable multiphoton ionization for a species:
+
+.. code-block:: text
+
+    species_name.ionization_model = "multiphoton"
+    species_name.mpi_laser_wavelength = 800.0  # nm
+    species_name.mpi_prefactor = 1.0e-14       # optional, SI units
+    species_name.physical_element = H
+    species_name.ionization_initial_level = 0
+    species_name.ionization_product_species = electrons
+    species_name.charge = q_e
+
 .. bibliography::
     :keyprefix: mpion-

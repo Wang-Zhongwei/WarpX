@@ -1,0 +1,45 @@
+---
+alwaysApply: true
+---
+
+# WarpX Compilation Instructions
+
+## Environment Setup
+
+Before compiling WarpX, always source the appropriate profile (CPU version):
+
+```bash
+source ~/cardinal_cpu_warpx.profile
+```
+
+## Basic Compilation
+
+To compile WarpX, use CMake with the following basic command structure:
+
+```bash
+cmake -S . -B build -DWarpX_DIMS="1"
+cmake --build build -j 4
+```
+
+The compiled binaries will be available in `build/bin/`.
+
+## Important Notes
+
+- **Dependencies are already installed** - Do NOT attempt to reinstall dependencies
+- The dimensionality can be changed using `-DWarpX_DIMS` option (values: "1", "2", "3", "RZ", "RCYLINDER", "RSPHERE", or combinations like "1;2;3;RZ;RCYLINDER;RSPHERE")
+- Common CMake options and build configurations are documented in [Docs/source/install/cmake.rst](mdc:Docs/source/install/cmake.rst)
+
+## Common CMake Options
+
+Refer to [cmake.rst](mdc:Docs/source/install/cmake.rst) for detailed options, including:
+- `WarpX_COMPUTE`: Backend selection (NOACC/OMP/CUDA/SYCL/HIP)
+- `WarpX_DIMS`: Simulation dimensionality
+- `WarpX_MPI`: Multi-node support
+- `WarpX_OPENPMD`: openPMD I/O support
+- `WarpX_PRECISION`: Floating point precision
+- `WarpX_QED`: QED support
+- `WarpX_FFT`: FFT-based solvers
+
+## Build Directory
+
+The existing build directory is `build_cardinal_cpu/` which contains pre-built binaries for multiple dimensions (1d, 2d, 3d, rz).
