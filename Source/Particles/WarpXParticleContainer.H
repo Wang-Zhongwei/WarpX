@@ -644,6 +644,13 @@ protected:
     /** for correction in Zhang et al., PRA 90, 043410 (2014). a1, a2, a3, Ecrit. */
     amrex::Gpu::DeviceVector<amrex::Real> adk_correction_factors;
     std::string physical_element;
+    std::string ionization_model = "ADK";  // "ADK" or "multiphoton"
+
+    // Multiphoton ionization (MPI) parameters (only used when ionization_model == "multiphoton")
+    amrex::Real mpi_laser_omega = 0.0;      // angular frequency (rad/s)
+    amrex::Real mpi_prefactor_C = 1.0e-14;  // prefactor in w = (C*E)^(2n)
+    amrex::Gpu::DeviceVector<int> mpi_photon_numbers;     // n for each level
+    amrex::Gpu::DeviceVector<amrex::Real> mpi_rates_prefactor;  // dt * C^(2n) for each level
 
     int do_resampling = 0;
 

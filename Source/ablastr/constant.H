@@ -149,6 +149,16 @@ namespace ablastr::constant
         template<typename T>
         constexpr auto reduced_compton_wavelength_v = static_cast<T>(hbar_v<double> / (m_e_v<double> * c_v<double>));
 
+        //! atomic unit of time [s] (variable template)
+        //! t_au = hbar / E_h where E_h = Hartree energy
+        template<typename T>
+        constexpr auto t_au_v = static_cast<T>(2.4188843265857e-17);
+
+        //! atomic unit of electric field [V/m] (variable template)
+        //! E_au = e/(4*pi*epsilon_0*a_0^2) where a_0 is Bohr radius
+        template<typename T>
+        constexpr auto E_au_v = static_cast<T>(5.14220674763e11);
+
         //! vacuum speed of light [m/s]
         constexpr auto c = c_v<amrex::Real>;
 
@@ -222,6 +232,15 @@ namespace ablastr::constant
         //! reduced Compton wavelength [m]
         constexpr auto reduced_compton_wavelength = reduced_compton_wavelength_v<amrex::Real>;
 
+        /** Atomic units (Hartree atomic units)
+         *  These are fundamental units derived from fundamental constants
+         *  See: https://physics.nist.gov/cuu/Constants/Table/allascii.txt
+         */
+        //! atomic unit of time [s]
+        constexpr auto t_au = t_au_v<amrex::Real>;
+
+        //! atomic unit of electric field [V/m]
+        constexpr auto E_au = E_au_v<amrex::Real>;
     } // namespace SI
 
 } // namespace ablastr::constant

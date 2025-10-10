@@ -13,6 +13,7 @@
 
 #include "Fields.H"
 #include "Particles/ElementaryProcess/Ionization.H"
+#include "Particles/ElementaryProcess/MPIIonization.H"
 #ifdef WARPX_QED
 #   include "Particles/ElementaryProcess/QEDInternals/BreitWheelerEngineWrapper.H"
 #   include "Particles/ElementaryProcess/QEDInternals/QuantumSyncEngineWrapper.H"
@@ -1094,15 +1095,35 @@ MultiParticleContainer::doFieldIonization (int lev,
             auto& src_tile = pc_source ->ParticlesAt(lev, pti);
             auto& dst_tile = pc_product->ParticlesAt(lev, pti);
 
-            auto Filter = phys_pc_ptr->getIonizationFunc(pti, lev, Ex.nGrowVect(),
-                                                         Ex[pti], Ey[pti], Ez[pti],
-                                                         Bx[pti], By[pti], Bz[pti]);
+            // Get appropriate filter function based on ionization model
+            if (pc_source->ionization_model == "ADK") {
+                // ADK ionization
+                auto Filter = phys_pc_ptr->getIonizationFunc(
+                    pti, lev, Ex.nGrowVect(),
+                    Ex[pti], Ey[pti], Ez[pti],
+                    Bx[pti], By[pti], Bz[pti]);
 
-            const auto np_dst = dst_tile.numParticles();
-            const auto num_added = filterCopyTransformParticles<1>(*pc_product, dst_tile, src_tile, np_dst,
-                                                                   Filter, Copy, Transform);
+                const auto np_dst = dst_tile.numParticles();
+                const auto num_added = filterCopyTransformParticles<1>(
+                    *pc_product, dst_tile, src_tile, np_dst,
+                    Filter, Copy, Transform);
 
-            setNewParticleIDs(dst_tile, np_dst, num_added);
+                setNewParticleIDs(dst_tile, np_dst, num_added);
+            }
+            else if (pc_source->ionization_model == "multiphoton" || pc_source->ionization_model == "MPI") {
+                // Multiphoton ionization
+                auto Filter = phys_pc_ptr->getMPIIonizationFunc(
+                    pti, lev, Ex.nGrowVect(),
+                    Ex[pti], Ey[pti], Ez[pti],
+                    Bx[pti], By[pti], Bz[pti]);
+
+                const auto np_dst = dst_tile.numParticles();
+                const auto num_added = filterCopyTransformParticles<1>(
+                    *pc_product, dst_tile, src_tile, np_dst,
+                    Filter, Copy, Transform);
+
+                setNewParticleIDs(dst_tile, np_dst, num_added);
+            }
 
             if (cost && WarpX::load_balance_costs_update_algo == LoadBalanceCostsUpdateAlgo::Timers)
             {

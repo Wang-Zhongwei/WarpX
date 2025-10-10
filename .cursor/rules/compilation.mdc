@@ -17,8 +17,8 @@ source ~/cardinal_cpu_warpx.profile
 To compile WarpX, use CMake with the following basic command structure:
 
 ```bash
-cmake -S . -B build -DWarpX_DIMS="1"
-cmake --build build -j 4
+cmake -S . -B build -DWarpX_DIMS="2"
+cmake --build build -j 8
 ```
 
 The compiled binaries will be available in `build/bin/`.

@@ -1567,7 +1567,26 @@ void
 PhysicalParticleContainer::InitIonizationModule ()
 {
     if (!do_field_ionization) { return; }
+
     const ParmParse pp_species_name(species_name);
+
+    // Parse ionization model (ADK or multiphoton)
+    pp_species_name.query("ionization_model", ionization_model);
+
+    // Parse MPI-specific parameters if using multiphoton model
+    if (ionization_model == "multiphoton" || ionization_model == "MPI") {
+        amrex::Real mpi_lambda_nm = 800.0;  // default 800 nm
+        utils::parser::queryWithParser(pp_species_name, "mpi_laser_wavelength", mpi_lambda_nm);
+
+        // Calculate omega from lambda
+        constexpr amrex::Real c_SI = PhysConst::c;  // m/s
+        mpi_laser_omega = 2.0 * MathConst::pi * c_SI / (mpi_lambda_nm * 1.0e-9);
+
+        // Optional: MPI prefactor C (default = 1e-14, can be species-specific)
+        mpi_prefactor_C = 1.0e-14;
+        utils::parser::queryWithParser(pp_species_name, "mpi_prefactor", mpi_prefactor_C);
+    }
+
     if (charge != PhysConst::q_e){
         ablastr::warn_manager::WMRecordWarning("Species",
             "charge != q_e for ionizable species '" +
@@ -1575,7 +1594,10 @@ PhysicalParticleContainer::InitIonizationModule ()
             "overriding user value and setting charge = q_e.");
         charge = PhysConst::q_e;
     }
-    utils::parser::queryWithParser(pp_species_name, "do_adk_correction", do_adk_correction);
+
+    if (ionization_model == "ADK") {
+        utils::parser::queryWithParser(pp_species_name, "do_adk_correction", do_adk_correction);
+    }
 
     utils::parser::queryWithParser(
         pp_species_name, "ionization_initial_level", ionization_initial_level);
@@ -1611,43 +1633,98 @@ PhysicalParticleContainer::InitIonizationModule ()
 
     const Real dt = WarpX::GetInstance().getdt(0);
 
+    // ionization_energies is used by both ADK and MPI
     ionization_energies.resize(ion_atomic_number);
-    adk_power.resize(ion_atomic_number);
-    adk_prefactor.resize(ion_atomic_number);
-    adk_exp_prefactor.resize(ion_atomic_number);
-
     Gpu::copyAsync(Gpu::hostToDevice,
                    h_ionization_energies.begin(), h_ionization_energies.end(),
                    ionization_energies.begin());
 
-    adk_correction_factors.resize(4);
-    if (do_adk_correction) {
-        Vector<Real> h_correction_factors(4);
-        constexpr int offset_corr = 0; // hard-coded: only Hydrogen
-        for(int i=0; i<4; i++){
-            h_correction_factors[i] = table_correction_factors[i+offset_corr];
+    if (ionization_model == "ADK") {
+        // ADK ionization coefficient precomputation
+        adk_power.resize(ion_atomic_number);
+        adk_prefactor.resize(ion_atomic_number);
+        adk_exp_prefactor.resize(ion_atomic_number);
+        adk_correction_factors.resize(4);
+
+        if (do_adk_correction) {
+            Vector<Real> h_correction_factors(4);
+            constexpr int offset_corr = 0; // hard-coded: only Hydrogen
+            for(int i=0; i<4; i++){
+                h_correction_factors[i] = table_correction_factors[i+offset_corr];
+            }
+            Gpu::copyAsync(Gpu::hostToDevice,
+                           h_correction_factors.begin(), h_correction_factors.end(),
+                           adk_correction_factors.begin());
         }
-        Gpu::copyAsync(Gpu::hostToDevice,
-                       h_correction_factors.begin(), h_correction_factors.end(),
-                       adk_correction_factors.begin());
+
+        Real const* AMREX_RESTRICT p_ionization_energies = ionization_energies.data();
+        Real * AMREX_RESTRICT p_adk_power = adk_power.data();
+        Real * AMREX_RESTRICT p_adk_prefactor = adk_prefactor.data();
+        Real * AMREX_RESTRICT p_adk_exp_prefactor = adk_exp_prefactor.data();
+        amrex::ParallelFor(ion_atomic_number, [=] AMREX_GPU_DEVICE (int i) noexcept
+        {
+            const Real n_eff = (i+1) * std::sqrt(UH/p_ionization_energies[i]);
+            const Real C2 = std::pow(2._rt,2._rt*n_eff)/(n_eff*std::tgamma(n_eff+l_eff+1._rt)*std::tgamma(n_eff-l_eff));
+            p_adk_power[i] = -(2._rt*n_eff - 1._rt);
+            const Real Uion = p_ionization_energies[i];
+            p_adk_prefactor[i] = dt * wa * C2 * ( Uion/(2._rt*UH) )
+                * std::pow(2._rt*std::pow((Uion/UH),3._rt/2._rt)*Ea,2._rt*n_eff - 1._rt);
+            p_adk_exp_prefactor[i] = -2._rt/3._rt * std::pow( Uion/UH,3._rt/2._rt) * Ea;
+        });
+
+        Gpu::synchronize();
     }
 
-    Real const* AMREX_RESTRICT p_ionization_energies = ionization_energies.data();
-    Real * AMREX_RESTRICT p_adk_power = adk_power.data();
-    Real * AMREX_RESTRICT p_adk_prefactor = adk_prefactor.data();
-    Real * AMREX_RESTRICT p_adk_exp_prefactor = adk_exp_prefactor.data();
-    amrex::ParallelFor(ion_atomic_number, [=] AMREX_GPU_DEVICE (int i) noexcept
-    {
-        const Real n_eff = (i+1) * std::sqrt(UH/p_ionization_energies[i]);
-        const Real C2 = std::pow(2._rt,2._rt*n_eff)/(n_eff*std::tgamma(n_eff+l_eff+1._rt)*std::tgamma(n_eff-l_eff));
-        p_adk_power[i] = -(2._rt*n_eff - 1._rt);
-        const Real Uion = p_ionization_energies[i];
-        p_adk_prefactor[i] = dt * wa * C2 * ( Uion/(2._rt*UH) )
-            * std::pow(2._rt*std::pow((Uion/UH),3._rt/2._rt)*Ea,2._rt*n_eff - 1._rt);
-        p_adk_exp_prefactor[i] = -2._rt/3._rt * std::pow( Uion/UH,3._rt/2._rt) * Ea;
-    });
+    if (ionization_model == "multiphoton" || ionization_model == "MPI") {
+        // MPI ionization coefficient precomputation
+        WARPX_ALWAYS_ASSERT_WITH_MESSAGE(
+            mpi_laser_omega > 0.0,
+            "MPI requires valid laser wavelength (mpi_laser_wavelength parameter)");
 
-    Gpu::synchronize();
+        // Allocate MPI arrays
+        mpi_photon_numbers.resize(ion_atomic_number);
+        mpi_rates_prefactor.resize(ion_atomic_number);
+
+        const Real hbar_SI = PhysConst::hbar;  // J·s
+        const Real eV_to_J = PhysConst::q_e;   // conversion factor
+        const Real photon_energy_eV = hbar_SI * mpi_laser_omega / eV_to_J;
+
+        // Atomic units (Hartree atomic units)
+        constexpr Real t_au = PhysConst::t_au;    // atomic unit of time (seconds)
+        constexpr Real E_au = PhysConst::E_au;    // atomic unit of electric field (V/m)
+
+        Real const* AMREX_RESTRICT p_ionization_energies = ionization_energies.data();
+        int* AMREX_RESTRICT p_mpi_n = mpi_photon_numbers.data();
+        Real* AMREX_RESTRICT p_mpi_prefactor = mpi_rates_prefactor.data();
+
+        const Real C = mpi_prefactor_C;
+
+        amrex::ParallelFor(ion_atomic_number, [=] AMREX_GPU_DEVICE (int i) noexcept
+        {
+            const Real Ip_eV = p_ionization_energies[i];
+            // Calculate multiphoton order: n = CEILING(Ip / hbar*omega)
+            p_mpi_n[i] = static_cast<int>(std::ceil(Ip_eV / photon_energy_eV));
+
+            // Precompute rate prefactor in atomic units for performance
+            // In SI: w = (C * E_SI)^(2n) per atomic timescale
+            // In AU: w = (sigma * E_norm)^(2n) per atomic timescale, where E_norm = E_SI / E_au
+            // sigma = C * E_au (converts C from SI to atomic units)
+            // Prefactor = (dt / t_au) * sigma^(2n)
+            const int two_n = 2 * p_mpi_n[i];
+            const Real sigma = C * E_au;  // C in atomic units
+            p_mpi_prefactor[i] = (dt / t_au) * std::pow(sigma, static_cast<Real>(two_n));
+        });
+
+        Gpu::synchronize();
+
+        // Print MPI initialization info
+        amrex::Print() << "Multiphoton ionization initialized for species '"
+                       << species_name << "':\n"
+                       << "  Laser wavelength: " << (2.0*MathConst::pi*PhysConst::c/mpi_laser_omega)*1e9
+                       << " nm\n"
+                       << "  Photon energy: " << photon_energy_eV << " eV\n"
+                       << "  Prefactor C: " << mpi_prefactor_C << "\n";
+    }
 }
 
 IonizationFilterFunc
@@ -1673,6 +1750,29 @@ PhysicalParticleContainer::getIonizationFunc (const WarpXParIter& pti,
                                 GetIntCompIndex("ionizationLevel"),
                                 ion_atomic_number,
                                 do_adk_correction};
+}
+
+MPIIonizationFilterFunc
+PhysicalParticleContainer::getMPIIonizationFunc (
+    const WarpXParIter& pti,
+    int lev,
+    amrex::IntVect ngEB,
+    const amrex::FArrayBox& Ex,
+    const amrex::FArrayBox& Ey,
+    const amrex::FArrayBox& Ez,
+    const amrex::FArrayBox& Bx,
+    const amrex::FArrayBox& By,
+    const amrex::FArrayBox& Bz)
+{
+    WARPX_PROFILE("PhysicalParticleContainer::getMPIIonizationFunc()");
+
+    return {pti, lev, ngEB, Ex, Ey, Ez, Bx, By, Bz,
+            m_E_external_particle, m_B_external_particle,
+            ionization_energies.dataPtr(),
+            mpi_photon_numbers.dataPtr(),
+            mpi_rates_prefactor.dataPtr(),
+            GetIntCompIndex("ionizationLevel"),
+            ion_atomic_number};
 }
 
 PlasmaInjector* PhysicalParticleContainer::GetPlasmaInjector (int i)
