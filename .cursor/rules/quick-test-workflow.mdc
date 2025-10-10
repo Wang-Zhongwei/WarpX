@@ -1,0 +1,81 @@
+---
+alwaysApply: true
+---
+# Quick Test Workflow for Code Validation
+
+After making edits to WarpX source code, especially to ionization-related files, always run a quick validation test using the automated test script.
+
+## Running the Quick Test
+
+To validate code changes, execute the test script from the project root:
+
+```bash
+./test_script.sh
+```
+
+**What this script does:**
+1. Sources the WarpX CPU environment ([cardinal_cpu_warpx.profile](mdc:~/cardinal_cpu_warpx.profile))
+2. Removes the old build directory to ensure clean compilation
+3. Recompiles WarpX with 2D dimensions using CMake
+4. Submits a Slurm job that runs the MPI ionization test ([test_mpi_ionization/run_mpi_test.sh](mdc:test_mpi_ionization/run_mpi_test.sh))
+
+## Test Script Details
+
+The main test script ([test_script.sh](mdc:test_script.sh)) performs:
+- Clean rebuild from scratch (removes `build/` directory)
+- CMake configuration with `-DWarpX_DIMS="2"`
+- Parallel build with 8 jobs (`-j 8`)
+- Automatic Slurm job submission for MPI ionization testing
+
+## Monitoring Test Results
+
+After submitting the job, check results in:
+- **Job output**: `test_mpi_ionization/logs/<jobid>.out`
+- **Job errors**: `test_mpi_ionization/logs/<jobid>.err`
+- **Simulation log**: `test_mpi_ionization/simulation.log`
+
+### What to Check For
+
+1. **Compilation Success**: Build should complete without errors
+2. **Job Submission**: Slurm should accept the job (check with `squeue -u $USER`)
+3. **Simulation Execution**: Look for "Multiphoton ionization initialized" in logs
+4. **Exit Code**: Should be 0 for successful completion
+5. **Output Files**: Check for diagnostic files in `diags/` subdirectories
+
+## Analysis and Iteration
+
+After reviewing test results:
+- If successful: Code changes are validated
+- If errors occur: Review error logs and fix issues at the root cause
+- Common issues to check:
+  - Compilation errors (syntax, missing includes, type mismatches)
+  - Runtime errors (segfaults, assertion failures)
+  - Physics errors (incorrect ionization rates, particle generation)
+  - MPI errors (communication failures, deadlocks)
+
+## Test Configuration
+
+The test runs with:
+- **MPI Tasks**: 32 (1 node, 32 tasks per node)
+- **Walltime**: 4 hours
+- **Input File**: [mpi_test.txt](mdc:test_mpi_ionization/mpi_test.txt)
+- **Dimension**: 2D
+- **Test Focus**: Multiphoton ionization (MPI) implementation
+
+## Related Files
+
+Key files involved in testing:
+- Test runner: [test_script.sh](mdc:test_script.sh)
+- Slurm script: [test_mpi_ionization/run_mpi_test.sh](mdc:test_mpi_ionization/run_mpi_test.sh)
+- MPI ionization header: [Source/Particles/ElementaryProcess/MPIIonization.H](mdc:Source/Particles/ElementaryProcess/MPIIonization.H)
+- MPI ionization implementation: [Source/Particles/ElementaryProcess/MPIIonization.cpp](mdc:Source/Particles/ElementaryProcess/MPIIonization.cpp)
+- Physics constants: [Source/ablastr/constant.H](mdc:Source/ablastr/constant.H)
+- Atomic data: [Source/Utils/Physics/atomic_data.txt](mdc:Source/Utils/Physics/atomic_data.txt)
+
+## Workflow Summary
+
+```
+Edit Code → Run test_script.sh → Wait for Slurm Job → Check Logs → Analyze Results → Fix Issues (if any) → Repeat
+```
+
+Always validate changes with this workflow before considering code modifications complete.

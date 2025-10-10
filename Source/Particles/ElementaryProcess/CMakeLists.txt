@@ -3,6 +3,7 @@ foreach(D IN LISTS WarpX_DIMS)
     target_sources(lib_${SD}
       PRIVATE
         Ionization.cpp
+        MPIIonization.cpp
     )
 
     if(WarpX_QED)
