@@ -2456,8 +2456,8 @@ WarpXParticleContainer::ApplyBoundaryConditions (){
         {
             auto GetPosition = GetParticlePosition<PIdx>(pti);
             auto SetPosition = SetParticlePosition<PIdx>(pti);
-            amrex::XDim3 gridmin;
-            amrex::XDim3 gridmax;
+            amrex::XDim3 gridmin{0.0, 0.0, 0.0};
+            amrex::XDim3 gridmax{0.0, 0.0, 0.0};
 #ifndef WARPX_DIM_1D_Z
             gridmin.x = Geom(lev).ProbLo(0);
             gridmax.x = Geom(lev).ProbHi(0);

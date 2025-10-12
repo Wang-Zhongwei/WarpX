@@ -13,6 +13,7 @@
 #include "Initialization/PlasmaInjector.H"
 #include "Particles/ElementaryProcess/Ionization.H"
 #include "Particles/ElementaryProcess/MPIIonization.H"
+#include "Particles/ElementaryProcess/PPTADKIonization.H"
 #ifdef WARPX_QED
 #    include "Particles/ElementaryProcess/QEDPairGeneration.H"
 #    include "Particles/ElementaryProcess/QEDPhotonEmission.H"
@@ -233,6 +234,16 @@ public:
                                                    const amrex::FArrayBox& Bx,
                                                    const amrex::FArrayBox& By,
                                                    const amrex::FArrayBox& Bz);
+
+    PPTADKIonizationFilterFunc getPPTADKIonizationFunc (const WarpXParIter& pti,
+                                                         int lev,
+                                                         amrex::IntVect ngEB,
+                                                         const amrex::FArrayBox& Ex,
+                                                         const amrex::FArrayBox& Ey,
+                                                         const amrex::FArrayBox& Ez,
+                                                         const amrex::FArrayBox& Bx,
+                                                         const amrex::FArrayBox& By,
+                                                         const amrex::FArrayBox& Bz);
 
     // Inject particles in Box 'part_box'
     virtual void AddParticles (int lev);

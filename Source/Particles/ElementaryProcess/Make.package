@@ -1,5 +1,6 @@
 CEXE_sources += Ionization.cpp
 CEXE_sources += MPIIonization.cpp
+CEXE_sources += PPTADKIonization.cpp
 
 ifeq ($(QED),TRUE)
      CEXE_sources += QEDPairGeneration.cpp

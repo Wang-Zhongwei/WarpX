@@ -153,10 +153,7 @@ struct MPIIonizationFilterFunc
         );
 
         // Compute multiphoton ionization rate in atomic units for performance
-        // Atomic unit of electric field: E_au = 5.14220674763e11 V/m
-        // In atomic units: w = E_au^(2n) per atomic timescale
-        constexpr amrex::Real E_atomic = PhysConst::E_au;  // V/m
-        const amrex::Real E_norm = E / E_atomic;  // normalized electric field
+        const amrex::Real E_norm = E / PhysConst::E_au;  // normalized electric field
         
         const int two_n = 2 * m_photon_numbers[ion_lev];
         

@@ -1575,12 +1575,11 @@ PhysicalParticleContainer::InitIonizationModule ()
 
     // Parse MPI-specific parameters if using multiphoton model
     if (ionization_model == "multiphoton" || ionization_model == "MPI") {
-        amrex::Real mpi_lambda_nm = 800.0;  // default 800 nm
-        utils::parser::queryWithParser(pp_species_name, "mpi_laser_wavelength", mpi_lambda_nm);
+        amrex::Real mpi_lambda_m = 800.0 * 1.0e-9;  // default 800 nm
+        utils::parser::queryWithParser(pp_species_name, "mpi_laser_wavelength", mpi_lambda_m);
 
         // Calculate omega from lambda
-        constexpr amrex::Real c_SI = PhysConst::c;  // m/s
-        mpi_laser_omega = 2.0 * MathConst::pi * c_SI / (mpi_lambda_nm * 1.0e-9);
+        mpi_laser_omega = 2.0 * MathConst::pi * PhysConst::c / (mpi_lambda_m);
 
         // Optional: MPI prefactor C (default = 1e-14, can be species-specific)
         mpi_prefactor_C = 1.0e-14;
@@ -1595,7 +1594,7 @@ PhysicalParticleContainer::InitIonizationModule ()
         charge = PhysConst::q_e;
     }
 
-    if (ionization_model == "ADK") {
+    if (ionization_model == "ADK" || ionization_model == "PPT-ADK") {
         utils::parser::queryWithParser(pp_species_name, "do_adk_correction", do_adk_correction);
     }
 
@@ -1626,8 +1625,7 @@ PhysicalParticleContainer::InitIonizationModule ()
     constexpr auto a3 = PhysConst::alpha*PhysConst::alpha*PhysConst::alpha;
     constexpr auto a4 = a3 * PhysConst::alpha;
     constexpr Real wa = a3 * PhysConst::c / PhysConst::r_e;
-    constexpr Real Ea = PhysConst::m_e * PhysConst::c*PhysConst::c /PhysConst::q_e *
-        a4/PhysConst::r_e;
+    constexpr Real Ea = PhysConst::E_au;
     constexpr Real UH = utils::physics::table_ionization_energies[0];
     const Real l_eff = std::sqrt(UH/h_ionization_energies[0]) - 1._rt;
 
@@ -1685,13 +1683,10 @@ PhysicalParticleContainer::InitIonizationModule ()
         mpi_photon_numbers.resize(ion_atomic_number);
         mpi_rates_prefactor.resize(ion_atomic_number);
 
-        const Real hbar_SI = PhysConst::hbar;  // J·s
-        const Real eV_to_J = PhysConst::q_e;   // conversion factor
-        const Real photon_energy_eV = hbar_SI * mpi_laser_omega / eV_to_J;
+        const Real photon_energy_eV = PhysConst::hbar * mpi_laser_omega / PhysConst::eV;
 
         // Atomic units (Hartree atomic units)
         constexpr Real t_au = PhysConst::t_au;    // atomic unit of time (seconds)
-        constexpr Real E_au = PhysConst::E_au;    // atomic unit of electric field (V/m)
 
         Real const* AMREX_RESTRICT p_ionization_energies = ionization_energies.data();
         int* AMREX_RESTRICT p_mpi_n = mpi_photon_numbers.data();
@@ -1707,11 +1702,11 @@ PhysicalParticleContainer::InitIonizationModule ()
 
             // Precompute rate prefactor in atomic units for performance
             // In SI: w = (C * E_SI)^(2n) per atomic timescale
-            // In AU: w = (sigma * E_norm)^(2n) per atomic timescale, where E_norm = E_SI / E_au
-            // sigma = C * E_au (converts C from SI to atomic units)
+            // In AU: w = (sigma * E_norm)^(2n) per atomic timescale, where E_norm = E_SI / Ea
+            // sigma = C * Ea (converts C from SI to atomic units)
             // Prefactor = (dt / t_au) * sigma^(2n)
             const int two_n = 2 * p_mpi_n[i];
-            const Real sigma = C * E_au;  // C in atomic units
+            const Real sigma = C * Ea;  // C in atomic units
             p_mpi_prefactor[i] = (dt / t_au) * std::pow(sigma, static_cast<Real>(two_n));
         });
 
@@ -1724,6 +1719,107 @@ PhysicalParticleContainer::InitIonizationModule ()
                        << " nm\n"
                        << "  Photon energy: " << photon_energy_eV << " eV\n"
                        << "  Prefactor C: " << mpi_prefactor_C << "\n";
+    }
+
+    if (ionization_model == "PPT-ADK") {
+        // PPT-ADK ionization coefficient precomputation
+        // This model combines PPT (multiphoton) and ADK (tunneling) regimes
+        // based on the Keldysh parameter γ
+
+        // Parse laser wavelength for Keldysh parameter calculation
+        amrex::Real ppt_lambda_m = 800.0 * 1.0e-9;  // default 800 nm
+        utils::parser::queryWithParser(pp_species_name, "ppt_laser_wavelength", ppt_lambda_m);
+
+        // Calculate omega from lambda
+        ppt_laser_omega = 2.0 * MathConst::pi * PhysConst::c / (ppt_lambda_m);
+
+        WARPX_ALWAYS_ASSERT_WITH_MESSAGE(
+            ppt_laser_omega > 0.0,
+            "PPT-ADK requires valid laser wavelength (ppt_laser_wavelength parameter)");
+
+        // Optional: A_m summation control parameters
+        ppt_max_terms = 1000;  // default: 1000 terms
+        utils::parser::queryWithParser(pp_species_name, "ppt_max_terms", ppt_max_terms);
+
+        ppt_tolerance = 1.e-12;  // default: 1e-12 convergence tolerance
+        utils::parser::queryWithParser(pp_species_name, "ppt_tolerance", ppt_tolerance);
+
+        // Allocate ADK arrays (needed for γ < 1 regime)
+        adk_power.resize(ion_atomic_number);
+        adk_prefactor.resize(ion_atomic_number);
+        adk_exp_prefactor.resize(ion_atomic_number);
+        adk_correction_factors.resize(4);
+
+        if (do_adk_correction) {
+            Vector<Real> h_correction_factors(4);
+            constexpr int offset_corr = 0; // hard-coded: only Hydrogen
+            for(int i=0; i<4; i++){
+                h_correction_factors[i] = table_correction_factors[i+offset_corr];
+            }
+            Gpu::copyAsync(Gpu::hostToDevice,
+                           h_correction_factors.begin(), h_correction_factors.end(),
+                           adk_correction_factors.begin());
+        }
+
+        // Allocate PPT-ADK arrays
+        ppt_prefactor.resize(ion_atomic_number);
+        ppt_nstar.resize(ion_atomic_number);
+        ppt_lstar.resize(ion_atomic_number);
+
+        // Note: UH, a3, a4, wa, and Ea are already defined at the top of this function
+
+        Real const* AMREX_RESTRICT p_ionization_energies = ionization_energies.data();
+        Real* AMREX_RESTRICT p_adk_power = adk_power.data();
+        Real* AMREX_RESTRICT p_adk_prefactor = adk_prefactor.data();
+        Real* AMREX_RESTRICT p_adk_exp_prefactor = adk_exp_prefactor.data();
+        Real* AMREX_RESTRICT p_ppt_prefactor = ppt_prefactor.data();
+        Real* AMREX_RESTRICT p_nstar = ppt_nstar.data();
+        Real* AMREX_RESTRICT p_lstar = ppt_lstar.data();
+
+        amrex::ParallelFor(ion_atomic_number, [=] AMREX_GPU_DEVICE (int i) noexcept
+        {
+            const Real Ip_eV = p_ionization_energies[i];
+            const Real Ip_au = Ip_eV / PhysConst::E_h;
+
+            // Compute effective quantum numbers
+            // n* = (Z_eff)√(U_H/I_p), l* = n* - 1
+            const Real n_star = (i + 1._rt) * std::sqrt(UH / Ip_eV);
+            const Real l_star = n_star - 1._rt;
+
+            p_nstar[i] = n_star;
+            p_lstar[i] = l_star;
+
+            // Compute atomic structure factor C²_nl
+            // C²_nl = 2^(2n*) / [n* Γ(n*+l*+1) Γ(n*-l*)]
+            const Real C2 = std::pow(2._rt, 2._rt * n_star) /
+                (n_star * std::tgamma(n_star + l_star + 1._rt) * std::tgamma(n_star - l_star));
+
+            // ADK coefficients (for tunneling regime, γ < 1)
+            p_adk_power[i] = -(2._rt * n_star - 1._rt);
+            const Real Uion = Ip_eV;
+            p_adk_prefactor[i] = dt * wa * C2 * (Uion / (2._rt * UH)) *
+                std::pow(2._rt * std::pow((Uion/UH), 1.5_rt) * Ea, 2._rt * n_star - 1._rt);
+            p_adk_exp_prefactor[i] = -(2._rt / 3._rt) * std::pow(Uion/UH, 1.5_rt) * Ea;
+
+            // PPT prefactor (for multiphoton regime, γ ≥ 1, l=0, m=0):
+            // Includes dt, ω_a, C²_nl, I_p, and √(6/π) f_lm
+            // f_00 = 1 for l=0, m=0
+            const Real f_lm = 1._rt;
+            p_ppt_prefactor[i] = dt * wa * C2 * Ip_au * std::sqrt(6._rt / MathConst::pi) * f_lm;
+        });
+
+        Gpu::synchronize();
+
+        // Print PPT-ADK initialization info
+        amrex::Print() << "PPT-ADK ionization initialized for species '"
+                       << species_name << "':\n"
+                       << "  Laser wavelength: " << ppt_lambda_m << " nm\n"
+                       << "  Laser frequency: " << ppt_laser_omega/(2.0*MathConst::pi) << " Hz\n"
+                       << "  Photon energy: " << (PhysConst::hbar*ppt_laser_omega/PhysConst::q_e)
+                       << " eV\n"
+                       << "  A_m summation: max_terms=" << ppt_max_terms
+                       << ", tolerance=" << ppt_tolerance << "\n"
+                       << "  Model: Automatic switching between ADK (γ<1) and PPT (γ≥1)\n";
     }
 }
 
@@ -1773,6 +1869,38 @@ PhysicalParticleContainer::getMPIIonizationFunc (
             mpi_rates_prefactor.dataPtr(),
             GetIntCompIndex("ionizationLevel"),
             ion_atomic_number};
+}
+
+PPTADKIonizationFilterFunc
+PhysicalParticleContainer::getPPTADKIonizationFunc (
+    const WarpXParIter& pti,
+    int lev,
+    amrex::IntVect ngEB,
+    const amrex::FArrayBox& Ex,
+    const amrex::FArrayBox& Ey,
+    const amrex::FArrayBox& Ez,
+    const amrex::FArrayBox& Bx,
+    const amrex::FArrayBox& By,
+    const amrex::FArrayBox& Bz)
+{
+    WARPX_PROFILE("PhysicalParticleContainer::getPPTADKIonizationFunc()");
+
+    return {pti, lev, ngEB, Ex, Ey, Ez, Bx, By, Bz,
+            m_E_external_particle, m_B_external_particle,
+            ionization_energies.dataPtr(),
+            adk_prefactor.dataPtr(),
+            adk_exp_prefactor.dataPtr(),
+            adk_power.dataPtr(),
+            adk_correction_factors.dataPtr(),
+            ppt_prefactor.dataPtr(),
+            ppt_nstar.dataPtr(),
+            ppt_lstar.dataPtr(),
+            ppt_laser_omega,
+            GetIntCompIndex("ionizationLevel"),
+            ion_atomic_number,
+            do_adk_correction,
+            ppt_max_terms,
+            ppt_tolerance};
 }
 
 PlasmaInjector* PhysicalParticleContainer::GetPlasmaInjector (int i)

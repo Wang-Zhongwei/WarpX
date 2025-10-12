@@ -652,6 +652,14 @@ protected:
     amrex::Gpu::DeviceVector<int> mpi_photon_numbers;     // n for each level
     amrex::Gpu::DeviceVector<amrex::Real> mpi_rates_prefactor;  // dt * C^(2n) for each level
 
+    // PPT-ADK ionization parameters (only used when ionization_model == "PPT-ADK")
+    amrex::Real ppt_laser_omega = 0.0;      // angular frequency (rad/s) for Keldysh parameter
+    amrex::Gpu::DeviceVector<amrex::Real> ppt_prefactor;  // Prefactor for PPT rate
+    amrex::Gpu::DeviceVector<amrex::Real> ppt_nstar;      // n* for each level
+    amrex::Gpu::DeviceVector<amrex::Real> ppt_lstar;      // l* for each level
+    int ppt_max_terms = 1000;  // Maximum terms in A_m summation (default: 1000)
+    amrex::Real ppt_tolerance = 1.e-12;  // Convergence tolerance for A_m (default: 1e-12)
+
     int do_resampling = 0;
 
     /** Whether back-transformed diagnostics is turned on for the corresponding species.*/
