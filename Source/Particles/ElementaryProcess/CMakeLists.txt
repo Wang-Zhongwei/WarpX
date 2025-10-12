@@ -4,6 +4,7 @@ foreach(D IN LISTS WarpX_DIMS)
       PRIVATE
         Ionization.cpp
         MPIIonization.cpp
+        PPTADKIonization.cpp
     )
 
     if(WarpX_QED)
