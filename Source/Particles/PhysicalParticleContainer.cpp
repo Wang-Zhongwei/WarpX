@@ -1623,7 +1623,6 @@ PhysicalParticleContainer::InitIonizationModule ()
     // The approximate expressions are used,
     // without Gamma function
     constexpr auto a3 = PhysConst::alpha*PhysConst::alpha*PhysConst::alpha;
-    constexpr auto a4 = a3 * PhysConst::alpha;
     constexpr Real wa = a3 * PhysConst::c / PhysConst::r_e;
     constexpr Real Ea = PhysConst::E_au;
     constexpr Real UH = utils::physics::table_ionization_energies[0];
