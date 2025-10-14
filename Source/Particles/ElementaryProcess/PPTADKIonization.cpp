@@ -10,10 +10,77 @@
 
 #include <AMReX_Box.H>
 #include <AMReX_FArrayBox.H>
+#include <AMReX_GpuDevice.H>
+#include <AMReX_GpuUtility.H>
 #include <AMReX_IntVect.H>
+#include <AMReX_Vector.H>
 
 #include <algorithm>
 #include <array>
+
+amrex::Gpu::DeviceVector<amrex::Real>
+PPTADKIonizationFilterFunc::WmLookupTable::s_values;
+
+amrex::Gpu::DeviceScalar<amrex::Real*>
+PPTADKIonizationFilterFunc::WmLookupTable::s_values_ptr;
+
+amrex::Gpu::DeviceScalar<int>
+PPTADKIonizationFilterFunc::WmLookupTable::s_ready_flag(0);
+
+std::once_flag PPTADKIonizationFilterFunc::WmLookupTable::s_init_once;
+
+void
+PPTADKIonizationFilterFunc::WmLookupTable::Initialize () noexcept
+{
+    std::call_once(s_init_once, []()
+    {
+        const int table_size = (max_cached_m + 1) * num_points;
+        amrex::Vector<amrex::Real> h_values(table_size, 0._rt);
+
+        for (int m = 0; m <= max_cached_m; ++m) {
+            for (int i = 0; i < num_points; ++i) {
+                const amrex::Real x = static_cast<amrex::Real>(i) * dx;
+                h_values[m * num_points + i] =
+                    PPTADKIonizationFilterFunc::compute_w_m_integral(x, m);
+            }
+        }
+
+        s_values.resize(table_size);
+        amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice,
+                              h_values.begin(), h_values.end(),
+                              s_values.begin());
+
+        s_values_ptr.setValue(s_values.data());
+        s_ready_flag.setValue(1);
+        amrex::Gpu::streamSynchronize();
+    });
+}
+
+AMREX_GPU_HOST_DEVICE
+bool
+PPTADKIonizationFilterFunc::WmLookupTable::IsReady () noexcept
+{
+    return *(s_ready_flag.data()) != 0;
+}
+
+AMREX_GPU_HOST_DEVICE
+amrex::Real
+PPTADKIonizationFilterFunc::WmLookupTable::Lookup (int mabs, amrex::Real xabs) noexcept
+{
+    const amrex::Real clamped_x = amrex::min(xabs, x_max);
+    const amrex::Real scaled = clamped_x * inv_dx;
+    int idx = static_cast<int>(scaled);
+    if (idx >= num_points - 1) {
+        idx = num_points - 2;
+    }
+
+    const amrex::Real frac = scaled - static_cast<amrex::Real>(idx);
+    const amrex::Real* values = *(s_values_ptr.data());
+    const int offset = mabs * num_points + idx;
+    const amrex::Real y0 = values[offset];
+    const amrex::Real y1 = values[offset + 1];
+    return y0 + frac * (y1 - y0);
+}
 
 PPTADKIonizationFilterFunc::PPTADKIonizationFilterFunc (
     const WarpXParIter& a_pti, int lev, amrex::IntVect ngEB,
@@ -57,5 +124,6 @@ PPTADKIonizationFilterFunc::PPTADKIonizationFilterFunc (
     comp{a_comp},
     m_atomic_number{a_atomic_number}
 {
+    WmLookupTable::Initialize();
     // No additional initialization needed - ADK filter handles everything
 }

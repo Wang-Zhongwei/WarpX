@@ -11,11 +11,13 @@
 #include "Utils/WarpXConst.H"
 
 #include <AMReX_Extension.H>
+#include <AMReX_GpuContainers.H>
 #include <AMReX_GpuQualifiers.H>
 #include <AMReX_REAL.H>
 #include <AMReX_Random.H>
 
 #include <cmath>
+#include <mutex>
 
 /**
  * \brief Filter function for PPT-ADK ionization
@@ -27,6 +29,37 @@
  */
 struct PPTADKIonizationFilterFunc
 {
+    /**
+     * \brief Lookup table for w_m(x) integrals used in PPT rate.
+     *
+     * The integrals are expensive to evaluate at runtime because they
+     * require Gauss-Legendre quadrature.  We precompute them on host once
+     * per execution and expose device-accessible pointers for fast
+     * interpolation inside kernels.
+     */
+    struct WmLookupTable
+    {
+        static constexpr int max_cached_m = 0;              //!< Cache |m| up to this value (only m=0 needed)
+        static constexpr int num_points = 512;              //!< Number of samples per m
+        static constexpr amrex::Real x_max = 10._rt;        //!< Maximum x captured by the table
+        static constexpr amrex::Real dx = x_max / (num_points - 1); //!< Uniform spacing
+        static constexpr amrex::Real inv_dx = 1._rt / dx;
+
+        static void Initialize () noexcept;
+
+        AMREX_GPU_HOST_DEVICE
+        static bool IsReady () noexcept;
+
+        AMREX_GPU_HOST_DEVICE
+        static amrex::Real Lookup (int mabs, amrex::Real xabs) noexcept;
+
+    private:
+        static amrex::Gpu::DeviceVector<amrex::Real> s_values;
+        static amrex::Gpu::DeviceScalar<amrex::Real*> s_values_ptr;
+        static amrex::Gpu::DeviceScalar<int> s_ready_flag;
+        static std::once_flag s_init_once;
+    };
+
     // Embedded ADK filter for γ < 1 regime and field gathering
     IonizationFilterFunc m_adk_filter;
 
@@ -106,15 +139,34 @@ struct PPTADKIonizationFilterFunc
         const amrex::Real x_abs = amrex::Math::abs(x);
         const int mabs = amrex::Math::abs(m);
 
+        const bool use_cache = WmLookupTable::IsReady() &&
+            (mabs <= WmLookupTable::max_cached_m) &&
+            (x_abs <= WmLookupTable::x_max);
+
+        amrex::Real value;
+        if (use_cache) {
+            value = WmLookupTable::Lookup(mabs, x_abs);
+        } else {
+            value = compute_w_m_integral(x_abs, mabs);
+        }
+
+        return (x >= 0._rt ? value : -value);
+    }
+
+    /**
+     * \brief Fallback quadrature evaluation of w_m used both for precomputation
+     * and when the lookup table is queried outside its bounds.
+     */
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+    static amrex::Real compute_w_m_integral (amrex::Real x_abs, int mabs) noexcept
+    {
+        using namespace amrex::literals;
+
         // Use Gauss-Legendre quadrature for all m (including m=0)
         // Transform ∫_0^x f(y) dy to ∫_0^1 f(xu) x du
         // w_m = x^{2m+1} e^{-x²} ∫_0^1 (1 - u²)^m e^{x²u²} du
 
         // 32-point Gauss-Legendre nodes and weights on [-1, 1]
-        // Transform to [0, 1]: u = (t + 1)/2, du = dt/2
-        // Generated using numpy.polynomial.legendre.leggauss(32)
-        // Provides ~1e-14 accuracy in typical PPT range (x ∈ [0.5, 6.0], m ∈ [0, 3])
-        // Performance: 2x faster than 64-point, 50% memory reduction
         constexpr int n_points = 32;
         constexpr amrex::Real nodes[32] = {
             -0.997263861849481569876730_rt, -0.985611511545268381695450_rt,
@@ -157,11 +209,9 @@ struct PPTADKIonizationFilterFunc
         const amrex::Real x2 = x_abs * x_abs;
 
         for (int i = 0; i < n_points; ++i) {
-            // Transform from [-1, 1] to [0, 1]
             const amrex::Real u = 0.5_rt * (nodes[i] + 1._rt);
             const amrex::Real w = 0.5_rt * weights[i];
 
-            // Integrand: (1 - u²)^|m| * exp(x² u²)
             const amrex::Real one_minus_u2 = 1._rt - u * u;
             amrex::Real term = 1._rt;
             for (int j = 0; j < mabs; ++j) {
@@ -172,13 +222,12 @@ struct PPTADKIonizationFilterFunc
             integral += w * term;
         }
 
-        // Apply prefactor: x^{2|m|+1} e^{-x²}
         amrex::Real x_power = x_abs;
         for (int j = 0; j < 2 * mabs; ++j) {
             x_power *= x_abs;
         }
 
-        return x_power * std::exp(-x2) * integral * (x >= 0._rt ? 1._rt : -1._rt);
+        return x_power * std::exp(-x2) * integral;
     }
 
     /**
