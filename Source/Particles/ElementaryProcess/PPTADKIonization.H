@@ -46,17 +46,13 @@ struct PPTADKIonizationFilterFunc
         static constexpr amrex::Real inv_dx = 1._rt / dx;
 
         static void Initialize () noexcept;
-
-        AMREX_GPU_HOST_DEVICE
         static bool IsReady () noexcept;
-
-        AMREX_GPU_HOST_DEVICE
-        static amrex::Real Lookup (int mabs, amrex::Real xabs) noexcept;
+        static const amrex::Real* GetDataPtr () noexcept;
 
     private:
         static amrex::Gpu::DeviceVector<amrex::Real> s_values;
-        static amrex::Gpu::DeviceScalar<amrex::Real*> s_values_ptr;
-        static amrex::Gpu::DeviceScalar<int> s_ready_flag;
+        static amrex::Real* s_values_ptr;
+        static int s_ready_flag;
         static std::once_flag s_init_once;
     };
 
@@ -68,6 +64,9 @@ struct PPTADKIonizationFilterFunc
     const amrex::Real* AMREX_RESTRICT m_ppt_prefactor;     // Prefactor for PPT rate
     const amrex::Real* AMREX_RESTRICT m_nstar;             // n* for each level
     const amrex::Real* AMREX_RESTRICT m_lstar;             // l* for each level
+
+    // Cached pointer to w_m lookup table for device access
+    const amrex::Real* AMREX_RESTRICT m_wm_table_ptr;
 
     // Laser parameters for Keldysh parameter
     amrex::Real m_laser_omega;  // angular frequency (rad/s)
@@ -130,7 +129,7 @@ struct PPTADKIonizationFilterFunc
      * across the full range of x values (0 to 5+) encountered in PPT calculations.
      */
     AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
-    static amrex::Real w_m (amrex::Real x, int m) noexcept
+    amrex::Real w_m (amrex::Real x, int m) const noexcept
     {
         using namespace amrex::literals;
 
@@ -139,18 +138,48 @@ struct PPTADKIonizationFilterFunc
         const amrex::Real x_abs = amrex::Math::abs(x);
         const int mabs = amrex::Math::abs(m);
 
-        const bool use_cache = WmLookupTable::IsReady() &&
-            (mabs <= WmLookupTable::max_cached_m) &&
-            (x_abs <= WmLookupTable::x_max);
+        // Copy constexpr values to local variables for device code compatibility
+        constexpr int table_max_cached_m = 0;
+        constexpr amrex::Real table_x_max = 10._rt;
+
+        const bool use_cache = (m_wm_table_ptr != nullptr) &&
+            (mabs <= table_max_cached_m) &&
+            (x_abs <= table_x_max);
 
         amrex::Real value;
         if (use_cache) {
-            value = WmLookupTable::Lookup(mabs, x_abs);
+            value = lookup_w_m(mabs, x_abs);
         } else {
             value = compute_w_m_integral(x_abs, mabs);
         }
 
         return (x >= 0._rt ? value : -value);
+    }
+
+    /**
+     * \brief Device-accessible lookup into the w_m table
+     */
+    AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
+    amrex::Real lookup_w_m (int mabs, amrex::Real xabs) const noexcept
+    {
+        using namespace amrex::literals;
+        // Copy constexpr values to local variables for device code compatibility
+        constexpr amrex::Real table_x_max = 10._rt;
+        constexpr int table_num_points = 512;
+        constexpr amrex::Real table_inv_dx = (table_num_points - 1) / table_x_max;
+
+        const amrex::Real clamped_x = amrex::min(xabs, table_x_max);
+        const amrex::Real scaled = clamped_x * table_inv_dx;
+        int idx = static_cast<int>(scaled);
+        if (idx >= table_num_points - 1) {
+            idx = table_num_points - 2;
+        }
+
+        const amrex::Real frac = scaled - static_cast<amrex::Real>(idx);
+        const int offset = mabs * table_num_points + idx;
+        const amrex::Real y0 = m_wm_table_ptr[offset];
+        const amrex::Real y1 = m_wm_table_ptr[offset + 1];
+        return y0 + frac * (y1 - y0);
     }
 
     /**
