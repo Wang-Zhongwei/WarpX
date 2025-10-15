@@ -21,11 +21,11 @@
 amrex::Gpu::DeviceVector<amrex::Real>
 PPTADKIonizationFilterFunc::WmLookupTable::s_values;
 
-amrex::Gpu::DeviceScalar<amrex::Real*>
-PPTADKIonizationFilterFunc::WmLookupTable::s_values_ptr;
+amrex::Real*
+PPTADKIonizationFilterFunc::WmLookupTable::s_values_ptr = nullptr;
 
-amrex::Gpu::DeviceScalar<int>
-PPTADKIonizationFilterFunc::WmLookupTable::s_ready_flag(0);
+int
+PPTADKIonizationFilterFunc::WmLookupTable::s_ready_flag = 0;
 
 std::once_flag PPTADKIonizationFilterFunc::WmLookupTable::s_init_once;
 
@@ -49,37 +49,23 @@ PPTADKIonizationFilterFunc::WmLookupTable::Initialize () noexcept
         amrex::Gpu::copyAsync(amrex::Gpu::hostToDevice,
                               h_values.begin(), h_values.end(),
                               s_values.begin());
-
-        s_values_ptr.setValue(s_values.data());
-        s_ready_flag.setValue(1);
         amrex::Gpu::streamSynchronize();
+
+        s_values_ptr = s_values.data();
+        s_ready_flag = 1;
     });
 }
 
-AMREX_GPU_HOST_DEVICE
 bool
 PPTADKIonizationFilterFunc::WmLookupTable::IsReady () noexcept
 {
-    return *(s_ready_flag.data()) != 0;
+    return s_ready_flag != 0;
 }
 
-AMREX_GPU_HOST_DEVICE
-amrex::Real
-PPTADKIonizationFilterFunc::WmLookupTable::Lookup (int mabs, amrex::Real xabs) noexcept
+const amrex::Real*
+PPTADKIonizationFilterFunc::WmLookupTable::GetDataPtr () noexcept
 {
-    const amrex::Real clamped_x = amrex::min(xabs, x_max);
-    const amrex::Real scaled = clamped_x * inv_dx;
-    int idx = static_cast<int>(scaled);
-    if (idx >= num_points - 1) {
-        idx = num_points - 2;
-    }
-
-    const amrex::Real frac = scaled - static_cast<amrex::Real>(idx);
-    const amrex::Real* values = *(s_values_ptr.data());
-    const int offset = mabs * num_points + idx;
-    const amrex::Real y0 = values[offset];
-    const amrex::Real y1 = values[offset + 1];
-    return y0 + frac * (y1 - y0);
+    return s_values_ptr;
 }
 
 PPTADKIonizationFilterFunc::PPTADKIonizationFilterFunc (
@@ -118,6 +104,7 @@ PPTADKIonizationFilterFunc::PPTADKIonizationFilterFunc (
     m_ppt_prefactor{a_ppt_prefactor},
     m_nstar{a_nstar},
     m_lstar{a_lstar},
+    m_wm_table_ptr{nullptr},
     m_laser_omega{a_laser_omega},
     m_max_terms{a_max_terms},
     m_tolerance{a_tolerance},
@@ -125,5 +112,5 @@ PPTADKIonizationFilterFunc::PPTADKIonizationFilterFunc (
     m_atomic_number{a_atomic_number}
 {
     WmLookupTable::Initialize();
-    // No additional initialization needed - ADK filter handles everything
+    m_wm_table_ptr = WmLookupTable::GetDataPtr();
 }

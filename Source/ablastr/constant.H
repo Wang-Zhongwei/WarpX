@@ -236,9 +236,6 @@ namespace ablastr::constant
          *  These are fundamental units derived from fundamental constants
          *  See: https://physics.nist.gov/cuu/Constants/Table/allascii.txt
          */
-        //! atomic unit of time [s]
-        //! t_au = hbar / E_h where E_h = Hartree energy
-        static constexpr auto t_au = 2.4188843265864e-17_rt;
         //! atomic unit of electric field [V/m]
         //! E_au = e/(4*pi*epsilon_0*a_0^2) where a_0 is Bohr radius
         static constexpr auto E_au = m_e*c*c/q_e*alpha*alpha*alpha*alpha/r_e;

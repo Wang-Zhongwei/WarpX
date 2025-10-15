@@ -36,7 +36,7 @@ struct MPIIonizationFilterFunc
     // Ionization data
     const amrex::Real* AMREX_RESTRICT m_ionization_energies;
     const int* AMREX_RESTRICT m_photon_numbers;         // n for each level
-    const amrex::Real* AMREX_RESTRICT m_rate_prefactor; // (dt / t_au) * sigma^(2n), sigma = C * E_au
+    const amrex::Real* AMREX_RESTRICT m_rate_prefactor; // dt * sigma^(2n), sigma = C * E_au
 
     int comp;  // ionizationLevel component index
     int m_atomic_number;
@@ -173,8 +173,8 @@ struct MPIIonizationFilterFunc
         }
         
         // Apply rate prefactor and Lorentz factor
-        // rate_prefactor = (dt/t_au) * sigma^(2n), where sigma = C * E_au
-        // w_dtau = rate_prefactor * E_norm^(2n) / gamma = (dt/t_au) * (sigma * E_norm)^(2n) / gamma
+        // rate_prefactor = dt * sigma^(2n), where sigma = C * E_au
+        // w_dtau = rate_prefactor * E_norm^(2n) / gamma = dt * (sigma * E_norm)^(2n) / gamma
         const amrex::Real w_dtau = m_rate_prefactor[ion_lev] * E_power / gamma;
 
         // Convert rate to probability

@@ -1685,7 +1685,6 @@ PhysicalParticleContainer::InitIonizationModule ()
         const Real photon_energy_eV = PhysConst::hbar * mpi_laser_omega / PhysConst::eV;
 
         // Atomic units (Hartree atomic units)
-        constexpr Real t_au = PhysConst::t_au;    // atomic unit of time (seconds)
 
         Real const* AMREX_RESTRICT p_ionization_energies = ionization_energies.data();
         int* AMREX_RESTRICT p_mpi_n = mpi_photon_numbers.data();
@@ -1703,10 +1702,10 @@ PhysicalParticleContainer::InitIonizationModule ()
             // In SI: w = (C * E_SI)^(2n) per atomic timescale
             // In AU: w = (sigma * E_norm)^(2n) per atomic timescale, where E_norm = E_SI / Ea
             // sigma = C * Ea (converts C from SI to atomic units)
-            // Prefactor = (dt / t_au) * sigma^(2n)
+            // Prefactor = dt * sigma^(2n)
             const int two_n = 2 * p_mpi_n[i];
             const Real sigma = C * Ea;  // C in atomic units
-            p_mpi_prefactor[i] = (dt / t_au) * std::pow(sigma, static_cast<Real>(two_n));
+            p_mpi_prefactor[i] = dt * std::pow(sigma, static_cast<Real>(two_n));
         });
 
         Gpu::synchronize();
