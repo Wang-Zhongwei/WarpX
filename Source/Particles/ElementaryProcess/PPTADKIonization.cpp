@@ -92,6 +92,7 @@ PPTADKIonizationFilterFunc::PPTADKIonizationFilterFunc (
     int a_do_adk_correction,
     int a_max_terms,
     amrex::Real a_tolerance,
+    amrex::Real a_gamma_threshold,
     int a_offset) noexcept :
     // Initialize the embedded ADK filter - it handles all field gathering and ADK calculations
     m_adk_filter{a_pti, lev, ngEB, exfab, eyfab, ezfab, bxfab, byfab, bzfab,
@@ -108,6 +109,7 @@ PPTADKIonizationFilterFunc::PPTADKIonizationFilterFunc (
     m_laser_omega{a_laser_omega},
     m_max_terms{a_max_terms},
     m_tolerance{a_tolerance},
+    m_gamma_threshold{a_gamma_threshold},
     comp{a_comp},
     m_atomic_number{a_atomic_number}
 {

@@ -23,9 +23,10 @@
  * \brief Filter function for PPT-ADK ionization
  *
  * Implements the PPT-ADK ionization model with automatic switching:
- * - γ < 1: ADK (tunneling) regime - delegates to existing ADK filter
- * - γ ≥ 1: PPT (multiphoton) regime
+ * - γ < γ_threshold: ADK (tunneling) regime - delegates to existing ADK filter
+ * - γ ≥ γ_threshold: PPT (multiphoton) regime
  * where γ is the Keldysh parameter: γ = ω√(2m_e I_p) / (e|E|)
+ * and γ_threshold is configurable (default: 0.5)
  */
 struct PPTADKIonizationFilterFunc
 {
@@ -75,6 +76,9 @@ struct PPTADKIonizationFilterFunc
     int m_max_terms;      // Maximum terms in A_m summation (default: 1000)
     amrex::Real m_tolerance;  // Convergence tolerance for A_m (default: 1e-12)
 
+    // ADK/PPT switching parameter
+    amrex::Real m_gamma_threshold;  // Keldysh gamma threshold for ADK/PPT crossover (default: 1.0)
+
     int comp;  // ionizationLevel component index
     int m_atomic_number;
 
@@ -104,6 +108,7 @@ struct PPTADKIonizationFilterFunc
                                 int a_do_adk_correction,
                                 int a_max_terms = 1000,
                                 amrex::Real a_tolerance = 1.e-12_rt,
+                                amrex::Real a_gamma_threshold = 1.0_rt,
                                 int a_offset = 0) noexcept;
 
     /**
@@ -396,8 +401,8 @@ struct PPTADKIonizationFilterFunc
 
         amrex::Real w_dtau;
 
-        if (keldysh_gamma < 1._rt) {
-            // ADK regime (tunneling, γ < 1) - use existing ADK calculation
+        if (keldysh_gamma < m_gamma_threshold) {
+            // ADK regime (tunneling, γ < threshold) - use existing ADK calculation
             w_dtau = (1._rt / ga) * m_adk_filter.m_adk_prefactor[ion_lev] *
                 std::pow(E, m_adk_filter.m_adk_power[ion_lev]) *
                 std::exp(m_adk_filter.m_adk_exp_prefactor[ion_lev] / E);
@@ -411,7 +416,7 @@ struct PPTADKIonizationFilterFunc
             }
         }
         else {
-            // PPT regime (multiphoton, γ ≥ 1)
+            // PPT regime (multiphoton, γ ≥ threshold)
             // Compute PPT rate using full A_m calculation with adaptive summation
             //
             // NOTE: This implementation assumes the atom is in its ground state (l=0, m=0)
@@ -445,7 +450,7 @@ struct PPTADKIonizationFilterFunc
 
             // Power-law factors (for l=0, m=0 ground state)
             const amrex::Real bracket = 2._rt * twoEi32_over_F;
-            const amrex::Real power_exp = 2._rt * n_star - 1.5_rt;  // = 2n* - |m=0| - 3/2
+            const amrex::Real power_exp = 2._rt * n_star - 1.0_rt;  // = 2n* - |m=0| - 1
             const amrex::Real poly_gamma = std::pow(1._rt + gamma2, 0.75_rt);  // = (1+γ²)^(|m=0|/2 + 3/4)
 
             // Compute full A_m(γ, ν, m=0) with adaptive summation
