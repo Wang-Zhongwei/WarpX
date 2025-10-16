@@ -1742,6 +1742,9 @@ PhysicalParticleContainer::InitIonizationModule ()
         ppt_tolerance = 1.e-12;  // default: 1e-12 convergence tolerance
         utils::parser::queryWithParser(pp_species_name, "ppt_tolerance", ppt_tolerance);
 
+        ppt_gamma_threshold = 0.5;  // default: 0.5 (crossover at γ=0.5)
+        utils::parser::queryWithParser(pp_species_name, "ppt_gamma_threshold", ppt_gamma_threshold);
+
         // Allocate ADK arrays (needed for γ < 1 regime)
         adk_power.resize(ion_atomic_number);
         adk_prefactor.resize(ion_atomic_number);
@@ -1800,10 +1803,10 @@ PhysicalParticleContainer::InitIonizationModule ()
             p_adk_exp_prefactor[i] = -(2._rt / 3._rt) * std::pow(Uion/UH, 1.5_rt) * Ea;
 
             // PPT prefactor (for multiphoton regime, γ ≥ 1, l=0, m=0):
-            // Includes dt, ω_a, C²_nl, I_p, and √(6/π) f_lm
+            // Includes dt, ω_a, C²_nl, I_p, and f_lm
             // f_00 = 1 for l=0, m=0
             const Real f_lm = 1._rt;
-            p_ppt_prefactor[i] = dt * wa * C2 * Ip_au * std::sqrt(6._rt / MathConst::pi) * f_lm;
+            p_ppt_prefactor[i] = dt * wa * C2 * Ip_au * f_lm;
         });
 
         Gpu::synchronize();
@@ -1817,7 +1820,8 @@ PhysicalParticleContainer::InitIonizationModule ()
                        << " eV\n"
                        << "  A_m summation: max_terms=" << ppt_max_terms
                        << ", tolerance=" << ppt_tolerance << "\n"
-                       << "  Model: Automatic switching between ADK (γ<1) and PPT (γ≥1)\n";
+                       << "  Model: Automatic switching between ADK (γ<" << ppt_gamma_threshold 
+                       << ") and PPT (γ≥" << ppt_gamma_threshold << ")\n";
     }
 }
 
@@ -1898,7 +1902,8 @@ PhysicalParticleContainer::getPPTADKIonizationFunc (
             ion_atomic_number,
             do_adk_correction,
             ppt_max_terms,
-            ppt_tolerance};
+            ppt_tolerance,
+            ppt_gamma_threshold};
 }
 
 PlasmaInjector* PhysicalParticleContainer::GetPlasmaInjector (int i)

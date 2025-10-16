@@ -659,6 +659,7 @@ protected:
     amrex::Gpu::DeviceVector<amrex::Real> ppt_lstar;      // l* for each level
     int ppt_max_terms = 1000;  // Maximum terms in A_m summation (default: 1000)
     amrex::Real ppt_tolerance = 1.e-12;  // Convergence tolerance for A_m (default: 1e-12)
+    amrex::Real ppt_gamma_threshold = 0.5;  // Keldysh gamma threshold for ADK/PPT crossover (default: 0.5)
 
     int do_resampling = 0;
 
