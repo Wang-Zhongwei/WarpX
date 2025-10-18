@@ -1618,6 +1618,32 @@ PhysicalParticleContainer::InitIonizationModule ()
         h_ionization_energies[i] =
             utils::physics::table_ionization_energies[i+offset];
     }
+
+    // Check if user provided custom ionization potentials (override default values)
+    std::vector<amrex::Real> custom_ionization_potentials;
+    const int n_custom = pp_species_name.countval("ionization_potentials");
+    if (n_custom > 0) {
+        custom_ionization_potentials.resize(n_custom);
+        pp_species_name.getarr("ionization_potentials", custom_ionization_potentials);
+
+        WARPX_ALWAYS_ASSERT_WITH_MESSAGE(
+            n_custom <= ion_atomic_number,
+            "Number of custom ionization potentials (" + std::to_string(n_custom) +
+            ") cannot exceed atomic number (" + std::to_string(ion_atomic_number) +
+            ") for species '" + species_name + "'");
+
+        // Override default values with custom ones
+        for(int i=0; i<n_custom; i++){
+            h_ionization_energies[i] = custom_ionization_potentials[i];
+        }
+
+        amrex::Print() << "Custom ionization potentials specified for species '"
+                       << species_name << "':\n";
+        for(int i=0; i<n_custom; i++){
+            amrex::Print() << "  Level " << i << ": "
+                           << h_ionization_energies[i] << " eV\n";
+        }
+    }
     // Compute ADK prefactors (See Chen, JCP 236 (2013), equation (2))
     // For now, we assume l=0 and m=0.
     // The approximate expressions are used,
