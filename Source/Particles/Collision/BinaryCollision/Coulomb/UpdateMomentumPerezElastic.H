@@ -24,6 +24,7 @@
  *        @param[in] n12 = max(w1,w2)*min(N1,N2)/dV is the effective density used for s12
  *        @param[in] sigma_max is the maximum cross section based on mfp = atomic spacing
  *        used for the normalized scattering length s12 (see Sec. II.C of Perez et al.)
+ *        @param[in] max_collision_rate is the maximum collision rate cap. If > 0, s12 will be capped.
  *        To see if there are nan or inf updated velocities,
  *        compile with USE_ASSERTION=TRUE.
  *
@@ -39,7 +40,7 @@ void UpdateMomentumPerezElastic (
     T_PR const q1, T_PR const m1, T_PR const w1,
     T_PR const q2, T_PR const m2, T_PR const w2,
     T_PR const n12, T_PR const sigma_max,
-    T_PR const L, T_PR const bmax,
+    T_PR const L, T_PR const bmax, T_PR const max_collision_rate,
     T_R const dt, amrex::RandomEngine const& engine )
 {
 
@@ -148,6 +149,11 @@ void UpdateMomentumPerezElastic (
         // sigma_eff = pi*b0^2*lnLmd
         const T_PR sigma_eff = amrex::min(T_PR(MathConst::pi)*b0*b0*lnLmd,sigma_max);
         s12 = sigma_eff * n12 * dt * vrelst * g1s*g2s/(g1*g2);
+
+        // Apply max collision rate cap if specified
+        if (max_collision_rate > T_PR(0.0)) {
+            s12 = amrex::min(s12, max_collision_rate * dt);
+        }
 
     }
 

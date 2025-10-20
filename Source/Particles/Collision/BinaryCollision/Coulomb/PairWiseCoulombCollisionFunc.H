@@ -64,6 +64,13 @@ public:
         m_CoulombLog = CoulombLog;
         m_exe.m_CoulombLog = m_CoulombLog;
 
+        // default max collision rate, if < 0, no cap is applied
+        amrex::ParticleReal max_collision_rate = -1.0_prt;
+        utils::parser::queryWithParser(
+            pp_collision_name, "max_collision_rate", max_collision_rate);
+        m_max_collision_rate = max_collision_rate;
+        m_exe.m_max_collision_rate = m_max_collision_rate;
+
         if (m_CoulombLog<0.0 && !m_use_global_debye_length) {
             m_exe.m_computeSpeciesTemperatures = true;
         }
@@ -117,10 +124,11 @@ public:
                     I1s, I1e, I2s, I2e, I1, I2,
                     soa_1, soa_2, n1, n2, T1, T2,
                     q1, q2, m1, m2,
-                    dt, global_lamdb, m_CoulombLog, dV, engine, m_isSameSpecies, coll_idx);
+                    dt, global_lamdb, m_CoulombLog, m_max_collision_rate, dV, engine, m_isSameSpecies, coll_idx);
         }
 
         amrex::ParticleReal m_CoulombLog;
+        amrex::ParticleReal m_max_collision_rate;
         bool m_computeSpeciesDensities = true;
         bool m_computeSpeciesTemperatures = false;
         bool m_need_product_data = false;
@@ -133,6 +141,7 @@ public:
 
 private:
     amrex::ParticleReal m_CoulombLog;
+    amrex::ParticleReal m_max_collision_rate;
     bool m_isSameSpecies;
 
     Executor m_exe;

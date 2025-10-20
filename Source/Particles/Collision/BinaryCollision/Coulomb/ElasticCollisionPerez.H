@@ -32,6 +32,7 @@
  * @param[in] global_lamdb is the global Debye length and will be used if greater than zero
  * @param[in] L is the Coulomb log and will be used if greater than zero,
  *            otherwise will be computed.
+ * @param[in] max_collision_rate is the maximum collision rate cap. If > 0, s12 will be capped.
  * @param[in] dV is the volume of the corresponding cell.
  * @param[in] engine the random number generator state & factory
  * @param[in] isSameSpecies whether this is an intra-species collision process
@@ -50,7 +51,7 @@ void ElasticCollisionPerez (
     T_PR const  T1, T_PR const  T2,
     T_PR const  q1, T_PR const  q2,
     T_PR const  m1, T_PR const  m2,
-    T_R const  dt, T_R const global_lamdb, T_PR const  L, T_R const  dV,
+    T_R const  dt, T_R const global_lamdb, T_PR const  L, T_PR const max_collision_rate, T_R const  dV,
     amrex::RandomEngine const& engine,
     bool const isSameSpecies, T_index coll_idx)
 {
@@ -135,7 +136,7 @@ void ElasticCollisionPerez (
               u1x[ I1[i1] ], u1y[ I1[i1] ], u1z[ I1[i1] ],
               u2x[ I2[i2] ], u2y[ I2[i2] ], u2z[ I2[i2] ],
               q1, m1, w1[ I1[i1] ], q2, m2, w2[ I2[i2] ],
-              n12, sigma_max, L, bmax, dt, engine );
+              n12, sigma_max, L, bmax, max_collision_rate, dt, engine );
 
 #if defined(WARPX_DIM_RZ) || defined(WARPX_DIM_RCYLINDER)
           T_PR const u1xbuf_new = u1x[I1[i1]];
