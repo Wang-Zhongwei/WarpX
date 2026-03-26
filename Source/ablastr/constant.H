@@ -149,16 +149,6 @@ namespace ablastr::constant
         template<typename T>
         constexpr auto reduced_compton_wavelength_v = static_cast<T>(hbar_v<double> / (m_e_v<double> * c_v<double>));
 
-        //! atomic unit of time [s] (variable template)
-        //! t_au = hbar / E_h where E_h = Hartree energy
-        template<typename T>
-        constexpr auto t_au_v = static_cast<T>(2.4188843265857e-17);
-
-        //! atomic unit of electric field [V/m] (variable template)
-        //! E_au = e/(4*pi*epsilon_0*a_0^2) where a_0 is Bohr radius
-        template<typename T>
-        constexpr auto E_au_v = static_cast<T>(5.14220674763e11);
-
         //! vacuum speed of light [m/s]
         constexpr auto c = c_v<amrex::Real>;
 
